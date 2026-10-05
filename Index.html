@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò Chơi Đoán Số</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s infinite ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4 selection:bg-indigo-500 selection:text-white">
+
+    <!-- Background Decoration -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/30 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl"></div>
+    </div>
+
+    <div class="relative w-full max-w-md">
+        <!-- Main Card -->
+        <div class="glass-panel text-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl transition-all duration-300">
+            
+            <!-- Header -->
+            <div class="text-center mb-6">
+                <span class="inline-block p-3 rounded-2xl bg-indigo-50 text-indigo-600 mb-3 shadow-inner">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                </span>
+                <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">Đoán Số Bất Ngờ</h1>
+                <p class="text-xs font-semibold text-indigo-600 mt-1 uppercase tracking-wider">Từ 1 đến 100</p>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-slate-100/80 rounded-2xl p-3 text-center border border-slate-200/60">
+                    <span class="block text-xs font-medium text-slate-500">Số Lần Đã Đoán</span>
+                    <span id="attempts" class="text-xl font-bold text-slate-800">0</span>
+                </div>
+                <div class="bg-slate-100/80 rounded-2xl p-3 text-center border border-slate-200/60">
+                    <span class="block text-xs font-medium text-slate-500">Kỷ Lục Tốt Nhất</span>
+                    <span id="bestScore" class="text-xl font-bold text-indigo-600">--</span>
+                </div>
+            </div>
+
+            <!-- Range Hint Bar -->
+            <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3 mb-6 text-center">
+                <p class="text-xs text-indigo-700 font-medium mb-1">Khoảng số hiện tại:</p>
+                <div class="flex items-center justify-center space-x-2 font-bold text-indigo-900">
+                    <span id="minRange" class="px-2.5 py-1 bg-white rounded-lg shadow-sm border border-indigo-100">1</span>
+                    <span>&mdash;</span>
+                    <span id="maxRange" class="px-2.5 py-1 bg-white rounded-lg shadow-sm border border-indigo-100">100</span>
+                </div>
+            </div>
+
+            <!-- Input Form -->
+            <form id="guessForm" class="space-y-4" onsubmit="handleGuess(event)">
+                <div class="relative">
+                    <input 
+                        type="number" 
+                        id="guessInput" 
+                        min="1" 
+                        max="100" 
+                        placeholder="Nhập số dự đoán..." 
+                        required
+                        class="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-200 text-slate-900 placeholder-slate-400 font-bold text-center text-lg focus:outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm"
+                        autocomplete="off"
+                    >
+                </div>
+
+                <button 
+                    type="submit" 
+                    id="submitBtn"
+                    class="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold shadow-lg shadow-indigo-500/25 transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                    <span>Kiểm Tra Kế Quả</span>
+                </button>
+            </form>
+
+            <!-- Feedback Alert -->
+            <div id="feedback" class="mt-4 p-4 rounded-2xl hidden transition-all duration-300 text-sm font-semibold text-center"></div>
+
+            <!-- Reset Button (Hidden by default) -->
+            <button 
+                id="resetBtn" 
+                onclick="resetGame()"
+                class="hidden w-full mt-4 py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold shadow-lg shadow-emerald-500/25 transition-all duration-200 animate-pulse-subtle"
+            >
+                Chơi Lại Trận Mới
+            </button>
+
+            <!-- History Section -->
+            <div class="mt-6 border-t border-slate-200/80 pt-4">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Lịch sử đoán:</h3>
+                <div id="history" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                    <span class="text-xs text-slate-400 italic">Chưa có lượt đoán nào...</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Game State Variables
+        let targetNumber;
+        let attemptsCount = 0;
+        let minRange = 1;
+        let maxRange = 100;
+        let isGameOver = false;
+        let bestScore = localStorage.getItem('guess_game_best') || null;
+
+        // Sound Effects (Web Audio API)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'high') {
+                // High tone (needs lower)
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(300, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'low') {
+                // Low tone (needs higher)
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(250, now);
+                osc.frequency.exponentialRampToValueAtTime(500, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'win') {
+                // Victory Jingle
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const noteOsc = audioCtx.createOscillator();
+                    const noteGain = audioCtx.createGain();
+                    noteOsc.connect(noteGain);
+                    noteGain.connect(audioCtx.destination);
+                    
+                    noteOsc.type = 'sine';
+                    noteOsc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    noteGain.gain.setValueAtTime(0.2, now + idx * 0.1);
+                    noteGain.gain.linearRampToValueAtTime(0.01, now + idx * 0.1 + 0.25);
+                    
+                    noteOsc.start(now + idx * 0.1);
+                    noteOsc.stop(now + idx * 0.1 + 0.25);
+                });
+            } else if (type === 'error') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            }
+        }
+
+        // DOM Elements
+        const guessInput = document.getElementById('guessInput');
+        const feedback = document.getElementById('feedback');
+        const attemptsEl = document.getElementById('attempts');
+        const bestScoreEl = document.getElementById('bestScore');
+        const minRangeEl = document.getElementById('minRange');
+        const maxRangeEl = document.getElementById('maxRange');
+        const historyEl = document.getElementById('history');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Initialize Game
+        function initGame() {
+            targetNumber = Math.floor(Math.random() * 100) + 1;
+            attemptsCount = 0;
+            minRange = 1;
+            maxRange = 100;
+            isGameOver = false;
+
+            attemptsEl.textContent = '0';
+            minRangeEl.textContent = '1';
+            maxRangeEl.textContent = '100';
+            guessInput.value = '';
+            guessInput.disabled = false;
+            submitBtn.disabled = false;
+
+            if (bestScore) {
+                bestScoreEl.textContent = bestScore;
+            }
+
+            feedback.className = 'mt-4 p-4 rounded-2xl hidden transition-all duration-300 text-sm font-semibold text-center';
+            resetBtn.classList.add('hidden');
+            submitBtn.classList.remove('hidden');
+            historyEl.innerHTML = '<span class="text-xs text-slate-400 italic">Chưa có lượt đoán nào...</span>';
+            
+            guessInput.focus();
+        }
+
+        function triggerShake() {
+            const card = document.querySelector('.glass-panel');
+            card.classList.remove('animate-shake');
+            void card.offsetWidth; // Trigger reflow
+            card.classList.add('animate-shake');
+        }
+
+        function handleGuess(e) {
+            e.preventDefault();
+            if (isGameOver) return;
+
+            const userGuess = parseInt(guessInput.value);
+
+            // Validation
+            if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+                playSound('error');
+                showFeedback('Vui lòng nhập một số hợp lệ từ 1 đến 100!', 'bg-amber-50 text-amber-700 border border-amber-200');
+                triggerShake();
+                return;
+            }
+
+            attemptsCount++;
+            attemptsEl.textContent = attemptsCount;
+
+            // Clear history placeholder if first guess
+            if (attemptsCount === 1) {
+                historyEl.innerHTML = '';
+            }
+
+            // Game Logic
+            if (userGuess === targetNumber) {
+                // WIN!
+                isGameOver = true;
+                playSound('win');
+                showFeedback(`🎉 Xuất sắc! Bạn đã đoán đúng số ${targetNumber} sau ${attemptsCount} lần thử!`, 'bg-emerald-50 text-emerald-700 border border-emerald-200');
+                
+                addHistoryBadge(userGuess, 'win');
+                
+                // Update Best Score
+                if (!bestScore || attemptsCount < parseInt(bestScore)) {
+                    bestScore = attemptsCount;
+                    localStorage.setItem('guess_game_best', bestScore);
+                    bestScoreEl.textContent = bestScore;
+                }
+
+                // Confetti animation
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+
+                // UI adjustments for Game Over
+                guessInput.disabled = true;
+                submitBtn.classList.add('hidden');
+                resetBtn.classList.remove('hidden');
+
+            } else if (userGuess > targetNumber) {
+                // Too High
+                playSound('high');
+                showFeedback('📉 Quá cao! Hãy thử một số nhỏ hơn.', 'bg-sky-50 text-sky-700 border border-sky-200');
+                if (userGuess < maxRange) {
+                    maxRange = userGuess - 1;
+                    maxRangeEl.textContent = maxRange;
+                }
+                addHistoryBadge(userGuess, 'high');
+            } else {
+                // Too Low
+                playSound('low');
+                showFeedback('📈 Quá thấp! Hãy thử một số lớn hơn.', 'bg-indigo-50 text-indigo-700 border border-indigo-200');
+                if (userGuess > minRange) {
+                    minRange = userGuess + 1;
+                    minRangeEl.textContent = minRange;
+                }
+                addHistoryBadge(userGuess, 'low');
+            }
+
+            guessInput.value = '';
+            guessInput.focus();
+        }
+
+        function showFeedback(message, bgClass) {
+            feedback.textContent = message;
+            feedback.className = `mt-4 p-4 rounded-2xl ${bgClass} transition-all duration-300 text-sm font-semibold text-center block`;
+        }
+
+        function addHistoryBadge(number, status) {
+            const badge = document.createElement('span');
+            let colorClasses = '';
+
+            if (status === 'win') {
+                colorClasses = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+            } else if (status === 'high') {
+                colorClasses = 'bg-sky-100 text-sky-800 border-sky-200';
+            } else {
+                colorClasses = 'bg-indigo-100 text-indigo-800 border-indigo-200';
+            }
+
+            badge.className = `px-2.5 py-1 text-xs font-bold rounded-xl border ${colorClasses} shadow-sm`;
+            badge.textContent = number;
+            historyEl.appendChild(badge);
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        // Start game on load
+        window.onload = initGame;
+    </script>
+</body>
+  </html>
