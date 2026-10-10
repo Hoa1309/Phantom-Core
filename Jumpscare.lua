@@ -22,7 +22,7 @@ ImageLabel.Image = getcustomasset("jumpscare_img.jpg")
 
 local Sound = Instance.new("Sound")
 Sound.Parent = game:GetService("SoundService")
-Sound.SoundId = "rbxassetid://140658234151287"
+Sound.SoundId = "rbxassetid://87748599204665"
 Sound.Volume = 9999999999999999999999
 Sound.Looped = true
 Sound:Play()
